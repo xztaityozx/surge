@@ -1,10 +1,10 @@
 use crate::io::Write;
 use regex::Regex;
+use threadpool::ThreadPool;
 use std::sync::mpsc;
 use std::{
     env,
     process::{Command, Stdio},
-    thread,
 };
 use std::{io, io::BufRead};
 
@@ -15,16 +15,11 @@ pub fn log_fatal(msg: &str) -> ! {
     std::process::exit(1);
 }
 
-pub enum ExecError {
-    StdinOpenFailed,
-    StdoutOpenFailed,
-    Io(std::io::Error),
-}
-
 fn main() {
     let stdin = io::stdin();
     let cmd = &["jq", "-s", "add"];
     let (tx, rx) = mpsc::channel();
+    let pool = ThreadPool::new(10);
 
     loop {
         let mut buf = Vec::with_capacity(BUF_SIZE);
@@ -37,9 +32,9 @@ fn main() {
 
                 let sender = mpsc::Sender::clone(&tx);
 
-                thread::spawn(move || {
+                pool.execute(move || {
                     let delimiter =
-                        Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
+                    Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
                     let line = &String::from_utf8_lossy(&buf).to_string();
                     let lines = delimiter.replace(line, "\n");
                     let mut child = Command::new(cmd[0])
@@ -74,7 +69,10 @@ fn main() {
         }
     }
 
-    for received in rx {
-        print!("{}", String::from_utf8_lossy(&received));
+    let mut stdout = io::stdout();
+    for buf in rx {
+        stdout.write_all(&buf).unwrap_or_else(|e| log_fatal(&e.to_string()));
     }
+
+    stdout.flush().unwrap_or_else(|e| log_fatal(&e.to_string()));
 }
