@@ -2,8 +2,16 @@
 name = "surge"
 version = "0.1.0"
 edition = "2021"
+licence = "MIT"
+repository = "https://github.com/xztaityozx/surge"
+homepage = "https://github.com/xztaityozx/surge"
+documentation = "https://github.com/xztaityozx/surge"
+description = "high performance while read L; do echo $L | do-something | xargs; done shorthand"
+authors = ["xztaityozx"]
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 regex = "1.5.4"
+threadpool = "1.0"
