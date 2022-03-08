@@ -1,8 +1,10 @@
 use crate::io::Write;
 use regex::Regex;
+use std::sync::mpsc;
 use std::{
     env,
-    process::{Command, Stdio}
+    process::{Command, Stdio},
+    thread,
 };
 use std::{io, io::BufRead};
 
@@ -20,43 +22,59 @@ pub enum ExecError {
 }
 
 fn main() {
-    let delimiter = Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
     let stdin = io::stdin();
-    let cmds = &["jq", "-s", "add"];
+    let cmd = &["jq", "-s", "add"];
+    let (tx, rx) = mpsc::channel();
+
     loop {
         let mut buf = Vec::with_capacity(BUF_SIZE);
         match stdin.lock().read_until(b'\n', &mut buf) {
             Ok(n) => {
                 if n == 0 {
+                    drop(tx);
                     break;
                 }
 
-                let mut child = Command::new(cmds[0])
-                    .args(&cmds[1..])
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .spawn()
-                    .unwrap_or_else(|e| log_fatal(&e.to_string()));
+                let sender = mpsc::Sender::clone(&tx);
 
-                let stdin = child.stdin.as_mut().unwrap_or_else(|| log_fatal("failed to open stdin"));
+                thread::spawn(move || {
+                    let delimiter =
+                        Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
+                    let line = &String::from_utf8_lossy(&buf).to_string();
+                    let lines = delimiter.replace(line, "\n");
+                    let mut child = Command::new(cmd[0])
+                        .args(&cmd[1..])
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .spawn()
+                        .unwrap_or_else(|e| log_fatal(&e.to_string()));
 
-                let line = String::from_utf8_lossy(&buf).to_string();
-                let mut left = 0;
-                for m in delimiter.find_iter(&line) {
-                    let right = m.start();
-                    let field = line[left..right].to_string() + "\n";
-                    stdin.write_all(field.as_bytes()).unwrap_or_else(|e| log_fatal(&e.to_string()));
-                    left = m.end();
-                }
-                stdin.flush().unwrap_or_else(|e| log_fatal(&e.to_string()));
+                    let stdin = child
+                        .stdin
+                        .as_mut()
+                        .unwrap_or_else(|| log_fatal("failed to open stdin"));
+                    stdin
+                        .write_all(lines.as_bytes())
+                        .unwrap_or_else(|e| log_fatal(&e.to_string()));
+                    stdin.flush().unwrap_or_else(|e| log_fatal(&e.to_string()));
 
-                let output = child.wait_with_output().unwrap_or_else(|e| log_fatal(&e.to_string()));
-                println!("{}", String::from_utf8_lossy(&output.stdout).replace('\n', " "));
+                    let output = child
+                        .wait_with_output()
+                        .unwrap_or_else(|e| log_fatal(&e.to_string()));
+
+                    sender
+                        .send(output.stdout)
+                        .unwrap_or_else(|e| log_fatal(&e.to_string()));
+                });
             }
             Err(e) => {
-                eprint!("{e}");
+                eprint!("{}", e);
                 return;
             }
         }
+    }
+
+    for received in rx {
+        print!("{}", String::from_utf8_lossy(&received));
     }
 }
