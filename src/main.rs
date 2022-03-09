@@ -1,24 +1,33 @@
 use crate::io::Write;
 use regex::Regex;
+use std::process::ExitStatus;
 use std::thread;
 use std::thread::JoinHandle;
-use std::{
-    env,
-    process::{Command, Stdio},
-};
+use std::process::{Command, Stdio};
 use std::{io, io::BufRead};
 use crossbeam::channel::{Sender, Receiver};
 
 const BUF_SIZE: usize = 1024;
 
+#[macro_use]
+extern crate log;
+
 pub fn log_fatal(msg: &str) -> ! {
-    eprint!("{}: {}", env!("CARGO_PKG_NAME"), msg);
+    error!("{}", msg);
     std::process::exit(1);
 }
 
-type SubProcessHandle = JoinHandle<Vec<u8>>;
+
+pub struct SubProcessResult {
+    exit_code: ExitStatus,
+    output: Vec<u8>,
+    cmd: Vec<String>,
+    input: String
+}
+type SubProcessHandle = JoinHandle<SubProcessResult>;
 
 fn main() {
+    env_logger::init();
     let stdin = io::stdin();
     let cmd = &["jq", "-s", "add"];
     let (tx, rx):(Sender<SubProcessHandle>, Receiver<SubProcessHandle>) = crossbeam::channel::bounded(10);
@@ -26,8 +35,12 @@ fn main() {
     let output_handle = thread::spawn(|| {
         let mut stdout = io::stdout();
         for handle in rx {
-            let buf = handle.join().unwrap();
-            stdout.write_all(&buf).unwrap();
+            let result = handle.join().unwrap();
+            if result.exit_code.success() {
+                stdout.write_all(&result.output).unwrap();
+            } else {
+            log_fatal(&("sub process exit code is not 0\ninput:\n\t".to_owned() + &result.input + "\ncommand:\n\t" + &result.cmd.join(" ")  + "\nerror:\n\t" + &String::from_utf8_lossy(&result.output)))
+            }
             stdout.write_all("\n".as_bytes()).unwrap();
         }
     });
@@ -52,6 +65,7 @@ fn main() {
                         .args(&cmd[1..])
                         .stdin(Stdio::piped())
                         .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
                         .spawn()
                         .unwrap_or_else(|e| log_fatal(&e.to_string()));
 
@@ -67,10 +81,12 @@ fn main() {
                     let output = child
                         .wait_with_output()
                         .unwrap_or_else(|e| log_fatal(&e.to_string()));
-                    String::from_utf8_lossy(&output.stdout).replace('\n', " ")
-                    .trim_end()
-                    .as_bytes()
-                    .to_vec()
+
+                    let buf = if output.status.success()  { 
+                        String::from_utf8_lossy(&output.stdout).replace('\n', " ").as_bytes().to_vec()
+                    }  else { output.stderr };
+
+                    SubProcessResult { exit_code: output.status, output: buf, input: line.trim().to_string(), cmd: cmd.map(|s| s.to_string()).to_vec() }
                 })).unwrap_or_else(|e| log_fatal(&e.to_string()));
             }
             Err(e) => {
