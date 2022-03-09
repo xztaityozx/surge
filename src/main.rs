@@ -1,7 +1,6 @@
 use crate::io::Write;
 use regex::Regex;
-use threadpool::ThreadPool;
-use std::sync::mpsc;
+use std::thread;
 use std::{
     env,
     process::{Command, Stdio},
@@ -18,23 +17,23 @@ pub fn log_fatal(msg: &str) -> ! {
 fn main() {
     let stdin = io::stdin();
     let cmd = &["jq", "-s", "add"];
-    let (tx, rx) = mpsc::channel();
-    let pool = ThreadPool::new(10);
+    let (send, recv) = multiqueue::broadcast_queue(10);
+    let mut handles = vec![];
 
     loop {
         let mut buf = Vec::with_capacity(BUF_SIZE);
         match stdin.lock().read_until(b'\n', &mut buf) {
             Ok(n) => {
                 if n == 0 {
-                    drop(tx);
+                    drop(send);
                     break;
                 }
 
-                let sender = mpsc::Sender::clone(&tx);
+                let sender = send.clone();
 
-                pool.execute(move || {
+                handles.push(thread::spawn(move|| {
                     let delimiter =
-                    Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
+                        Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
                     let line = &String::from_utf8_lossy(&buf).to_string();
                     let lines = delimiter.replace(line, "\n");
                     let mut child = Command::new(cmd[0])
@@ -56,11 +55,8 @@ fn main() {
                     let output = child
                         .wait_with_output()
                         .unwrap_or_else(|e| log_fatal(&e.to_string()));
-
-                    sender
-                        .send(output.stdout)
-                        .unwrap_or_else(|e| log_fatal(&e.to_string()));
-                });
+                    return output.stdout.clone();
+                }))
             }
             Err(e) => {
                 eprint!("{}", e);
@@ -69,10 +65,11 @@ fn main() {
         }
     }
 
+    recv.unsubscribe();
+
     let mut stdout = io::stdout();
-    for buf in rx {
+    for t in handles {
+        let buf = t.join().unwrap_or_else(|_| log_fatal("failed to wait complete sub process"));
         stdout.write_all(&buf).unwrap_or_else(|e| log_fatal(&e.to_string()));
     }
-
-    stdout.flush().unwrap_or_else(|e| log_fatal(&e.to_string()));
 }
