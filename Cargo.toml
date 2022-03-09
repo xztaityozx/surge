@@ -14,4 +14,4 @@ readme = "README.md"
 
 [dependencies]
 regex = "1.5.4"
-multiqueue = "0.3.2"
+crossbeam = "0.8"
