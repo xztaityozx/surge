@@ -6,6 +6,7 @@ use std::thread::JoinHandle;
 use std::process::{Command, Stdio};
 use std::{io, io::BufRead};
 use crossbeam::channel::{Sender, Receiver};
+use clap::Parser;
 
 const BUF_SIZE: usize = 1024;
 
@@ -26,7 +27,24 @@ pub struct SubProcessResult {
 }
 type SubProcessHandle = JoinHandle<SubProcessResult>;
 
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Arg {
+    // name of program
+    program: String,
+
+    // arguments for program
+    arguments: Vec<String>,
+
+    // input delimiter
+    #[clap(default_value_t = String::from(" "))]
+    input_delimiter: String,
+}
+
 fn main() {
+
+    //let arg = Arg::parse();
+
     env_logger::init();
     let stdin = io::stdin();
     let cmd = &["jq", "-s", "add"];
@@ -38,8 +56,8 @@ fn main() {
             let result = handle.join().unwrap();
             if result.exit_code.success() {
                 stdout.write_all(&result.output).unwrap();
-            } else {
-            log_fatal(&("sub process exit code is not 0\ninput:\n\t".to_owned() + &result.input + "\ncommand:\n\t" + &result.cmd.join(" ")  + "\nerror:\n\t" + &String::from_utf8_lossy(&result.output)))
+            }else{
+                log_fatal(&("sub process exit code is not 0\ninput:\n\t".to_owned() + &result.input + "\ncommand:\n\t" + &result.cmd.join(" ")  + "\nerror:\n\t" + &String::from_utf8_lossy(&result.output)))
             }
             stdout.write_all("\n".as_bytes()).unwrap();
         }
@@ -60,7 +78,7 @@ fn main() {
                     let delimiter =
                     Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
                     let line = &String::from_utf8_lossy(&buf).to_string();
-                    let lines = delimiter.replace(line, "\n");
+                    let lines = delimiter.replace_all(line, "\n").to_string();
                     let mut child = Command::new(cmd[0])
                         .args(&cmd[1..])
                         .stdin(Stdio::piped())
@@ -85,8 +103,7 @@ fn main() {
                     let buf = if output.status.success()  { 
                         String::from_utf8_lossy(&output.stdout).replace('\n', " ").as_bytes().to_vec()
                     }  else { output.stderr };
-
-                    SubProcessResult { exit_code: output.status, output: buf, input: line.trim().to_string(), cmd: cmd.map(|s| s.to_string()).to_vec() }
+                    SubProcessResult { exit_code: output.status, output: buf, input: line.trim().to_string(), cmd: cmd.to_vec() }
                 })).unwrap_or_else(|e| log_fatal(&e.to_string()));
             }
             Err(e) => {
