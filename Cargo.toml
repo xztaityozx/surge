@@ -6,7 +6,7 @@ license = "MIT"
 repository = "https://github.com/xztaityozx/surge"
 homepage = "https://github.com/xztaityozx/surge"
 documentation = "https://github.com/xztaityozx/surge"
-description = "high performance while read L; do echo $L | do-something | xargs; done shorthand"
+description = "high performance while read L; do echo $L | some-command | paste -sd ' '; done shorthand"
 authors = ["xztaityozx"]
 readme = "README.md"
 
