@@ -142,4 +142,18 @@ fn main() {
     }
 
     output_handle.join().unwrap_or_else(|_| log_fatal(""));
+    Builder::new()
+        .format(|buf, record| -> Result<(), io::Error> {
+            writeln!(
+                buf, 
+                "[{} {} {}] {}",
+                Local::now().format("%F %T"),
+                Red.paint(record.level().to_string()),
+                APP_NAME,
+                record.args(),
+            )
+        })
+        .filter(None, log::LevelFilter::Info)
+        .init();
+
 }
