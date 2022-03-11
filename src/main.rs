@@ -27,28 +27,57 @@ pub struct SubProcessResult {
 }
 type SubProcessHandle = JoinHandle<SubProcessResult>;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Arg {
-    // name of program
-    program: String,
+    /// command
+    command: String,
 
-    // arguments for program
+    /// arguments for command
     arguments: Vec<String>,
 
-    // input delimiter
-    #[clap(default_value_t = String::from(" "))]
+    /// delimiter for input
+    #[clap(short = 'd', long, default_value_t = String::from(" "))]
     input_delimiter: String,
+
+    /// delimiter for output
+    #[clap(short = 'D', long, default_value_t = String::from(" "))]
+    output_delimiter: String,
+
+    #[clap(short = 'g', long)]
+    use_regex: bool,
+}
+
+struct Replacer {
+    delm: String,
+    regex: Option<regex::Regex>
+}
+
+impl Replacer {
+    fn replace_all(self,line: &[u8]) -> Result<String, regex::Error> {
+        let l = String::from_utf8_lossy(line);
+        match self.regex {
+            None => Ok(l.replace(&self.delm, "\n")),
+            Some(r) => Ok(r.replace_all(&l, "\n").to_string())
+        }
+    }
 }
 
 fn main() {
-
-    //let arg = Arg::parse();
+    let arg = Arg::parse();
 
     env_logger::init();
     let stdin = io::stdin();
-    let cmd = &["jq", "-s", "add"];
+    let cmd = [[arg.command].to_vec(), arg.arguments].concat();
     let (tx, rx):(Sender<SubProcessHandle>, Receiver<SubProcessHandle>) = crossbeam::channel::bounded(10);
+    let replacer = Replacer {
+        delm: arg.input_delimiter.clone(),
+        regex: if arg.use_regex {
+            Some(Regex::new(&arg.input_delimiter).unwrap_or_else(|e| log_fatal(&e.to_string())))
+        } else {
+            None
+        }
+    };
 
     let output_handle = thread::spawn(|| {
         let mut stdout = io::stdout();
@@ -73,13 +102,12 @@ fn main() {
                 }
 
                 let sender = tx.clone();
+                let cmd = cmd.clone();
+                let output_delimiter = arg.output_delimiter.clone();
 
                 sender.send(thread::spawn(move|| {
-                    let delimiter =
-                    Regex::new("\\s+").unwrap_or_else(|e| log_fatal(&e.to_string()));
-                    let line = &String::from_utf8_lossy(&buf).to_string();
-                    let lines = delimiter.replace_all(line, "\n").to_string();
-                    let mut child = Command::new(cmd[0])
+                    let lines = replacer.replace_all(&buf).unwrap_or_else(|e| log_fatal(&e.to_string()));
+                    let mut child = Command::new(&cmd[0])
                         .args(&cmd[1..])
                         .stdin(Stdio::piped())
                         .stdout(Stdio::piped())
@@ -101,9 +129,9 @@ fn main() {
                         .unwrap_or_else(|e| log_fatal(&e.to_string()));
 
                     let buf = if output.status.success()  { 
-                        String::from_utf8_lossy(&output.stdout).replace('\n', " ").as_bytes().to_vec()
+                        String::from_utf8_lossy(&output.stdout).replace('\n',&output_delimiter).trim_end().as_bytes().to_vec()
                     }  else { output.stderr };
-                    SubProcessResult { exit_code: output.status, output: buf, input: line.trim().to_string(), cmd: cmd.to_vec() }
+                    SubProcessResult { exit_code: output.status, output: buf, input: lines.trim().to_string(), cmd: cmd.to_vec() }
                 })).unwrap_or_else(|e| log_fatal(&e.to_string()));
             }
             Err(e) => {
