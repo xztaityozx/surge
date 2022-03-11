@@ -72,3 +72,9 @@ $ seq 100 | paste -d ' ' - - - - | surge -- numsum
 378
 394
 ```
+
+# TODO
+- [ ] write unit test
+- [ ] generate shell completion script
+- [ ] create release
+
