@@ -98,7 +98,7 @@ impl SubProcess {
             }
         });
 
-        self.tx.send(handle).unwrap();
+        self.tx.send(handle).unwrap_or_else(|e| log_fatal(&e.to_string()));
         Ok(())
     }
 }
@@ -127,7 +127,11 @@ struct Arg {
 
     /// continue other process even if one of the sub process fails
     #[clap(long)]
-    suppress_fail: bool
+    suppress_fail: bool,
+
+    /// maximum number of parallels
+    #[clap(short = 'P', long, default_value_t = 1)]
+    number_of_parallel: usize,
 }
 
 // regex_process は行を正規表現で分割して cmd の stdin に流し込む
@@ -154,8 +158,7 @@ fn regex_process(delm: &regex::Regex, cmd: Vec<String>, tx: &Sender<SubProcessHa
                         .to_string()
                         .as_bytes()
                         .to_vec()
-                )
-                    .unwrap();
+                ).unwrap_or_else(|e| log_fatal(&e.to_string()));
             },
             Err(e) => {
                 log_fatal(&e.to_string())
@@ -192,7 +195,7 @@ fn string_process(delm: String, cmd: Vec<String>, tx: &Sender<SubProcessHandle>)
                         .as_bytes()
                         .to_vec()
                 )
-                    .unwrap();
+                    .unwrap_or_else(|e| log_fatal(&e.to_string()));
             },
             Err(e) => {
                 log_fatal(&e.to_string())
@@ -209,21 +212,29 @@ fn main() {
 
     Builder::new()
         .format(|buf, record| -> Result<(), io::Error> {
-            writeln!(
-                buf, 
-                "[{} {} {}] {}",
-                Local::now().format("%F %T"),
-                Red.paint(record.level().to_string()),
-                APP_NAME,
-                record.args(),
-            )
+            writeln!(buf, "[{} {} {}] {}",Local::now().format("%F %T"),Red.paint(record.level().to_string()),APP_NAME,record.args())
         })
         .filter(None, log::LevelFilter::Info)
         .init();
 
     let cmd = [[arg.command].to_vec(), arg.arguments].concat();
-    let (tx, rx):(Sender<SubProcessHandle>, Receiver<SubProcessHandle>) = crossbeam::channel::bounded(10);
+    let (tx, rx):(Sender<SubProcessHandle>, Receiver<SubProcessHandle>) = crossbeam::channel::bounded(arg.number_of_parallel);
     let suppress_fail = arg.suppress_fail;
+
+    let output_handle = thread::spawn(move|| {
+        let mut stdout = io::stdout();
+        for handle in rx {
+            let result = handle.join().unwrap_or_else(|_| log_fatal("failed to spawn sub process"));
+            if result.exit_code.success() {
+                stdout.write_all(
+                    String::from_utf8_lossy(&result.output).trim_end().as_bytes()
+                ).unwrap_or_else(|e| log_fatal(&e.to_string()));
+            } else if !suppress_fail {
+                log_fatal(&result.error_msg())
+            }
+            stdout.write_all("\n".as_bytes()).unwrap_or_else(|e| log_fatal(&e.to_string()));
+        }
+    });
 
     match arg.regex {
         Some(r) => {
@@ -235,22 +246,5 @@ fn main() {
     }
     drop(tx);
 
-    let mut stdout = io::stdout();
-    for handle in rx {
-        match handle.join() {
-            Ok(result) => {
-                if result.exit_code.success() {
-                    stdout.write_all(
-                        String::from_utf8_lossy(&result.output).trim_end().as_bytes()
-                    ).unwrap_or_else(|e| log_fatal(&e.to_string()));
-                } else if !suppress_fail {
-                    log_fatal(&result.error_msg())
-                }
-                stdout.write_all("\n".as_bytes()).unwrap_or_else(|e| log_fatal(&e.to_string()));
-            },
-            Err(_) => {
-                log_fatal("failed to spawn sub process");
-            }
-        }
-    }
+    output_handle.join().unwrap_or_else(|_| log_fatal("failed to spawn output thread"));
 }
