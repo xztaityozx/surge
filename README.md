@@ -1,6 +1,6 @@
 # ⚡surge⚡
 
-`surge` is high performance `while read L; do echo "$L" | some_command | tr '\n' ' '; done` shorthand
+`surge` is high performance `while read L; do echo "$L" | some_command | paste -sd ' '; done` shorthand
 
 ![](./img/surge-sample.png)
 
