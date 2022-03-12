@@ -240,6 +240,8 @@ fn main() {
             let result = handle.join().unwrap_or_else(|_| log_fatal("failed to spawn sub process"));
             if result.exit_code.success() {
                 stdout.write_all(
+                    // 末尾の改行を取り除いてからじゃないと
+                    // 末尾に余計な output_delimiter がついちゃう
                     String::from_utf8_lossy(&result.output).trim_end().replace('\n', &arg.output_delimiter).as_bytes()
                 ).unwrap_or_else(|e| log_fatal(&e.to_string()));
             } else if !suppress_fail {
