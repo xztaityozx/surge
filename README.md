@@ -19,6 +19,9 @@ ARGS:
     <ARGUMENTS>...    arguments for command
 
 OPTIONS:
+        --completion <SHELL>
+            generate completion script (bash,zsh,fish,powershell)
+
     -d, --input-delimiter <INPUT_DELIMITER>
             delimiter for input [default: " "]
 
@@ -73,8 +76,17 @@ $ seq 100 | paste -d ' ' - - - - | surge -- numsum
 394
 ```
 
+# Install
+
+## manual build
+```
+$ git clone https://github.com/xztaityozx/surge
+$ cd surge
+$ cargo install --path .
+```
+
 # TODO
 - [ ] write unit test
-- [ ] generate shell completion script
+- [x] generate shell completion script
 - [ ] create release
 

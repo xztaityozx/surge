@@ -1,12 +1,13 @@
 use crate::io::Write;
 use chrono::Local;
+use clap_complete::{Generator, generate};
 use env_logger::Builder;
 use regex::Regex;
 use std::sync::Arc;
 use std::{io, io::BufRead};
 use std::sync::mpsc::SendError;
 use crossbeam::channel::{Sender, Receiver};
-use clap::Parser;
+use clap::{Parser, IntoApp};
 use ansi_term::Color::Red;
 use std::thread::JoinHandle;
 use std::process::{Command, Stdio};
@@ -132,6 +133,10 @@ struct Arg {
     /// maximum number of parallels
     #[clap(short = 'P', long, default_value_t = 1)]
     number_of_parallel: usize,
+
+    /// generate completion script (bash,zsh,fish,powershell)
+    #[clap(long, value_name = "SHELL")]
+    completion: Option<clap_complete::Shell>,
 }
 
 // regex_process は行を正規表現で分割して cmd の stdin に流し込む
@@ -206,9 +211,17 @@ fn string_process(delm: String, cmd: Vec<String>, tx: &Sender<SubProcessHandle>)
     Ok(())
 }
 
+fn print_completions<G: Generator>(gen: G) {
+    generate(gen, &mut Arg::command(), APP_NAME, &mut io::stdout());
+}
 
 fn main() {
     let arg = Arg::parse();
+
+    if let Some(shell) = arg.completion {
+        print_completions(shell);
+        std::process::exit(0);
+    }
 
     Builder::new()
         .format(|buf, record| -> Result<(), io::Error> {
