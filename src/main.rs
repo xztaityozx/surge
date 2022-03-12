@@ -240,7 +240,7 @@ fn main() {
             let result = handle.join().unwrap_or_else(|_| log_fatal("failed to spawn sub process"));
             if result.exit_code.success() {
                 stdout.write_all(
-                    String::from_utf8_lossy(&result.output).trim_end().as_bytes()
+                    String::from_utf8_lossy(&result.output).trim_end().replace('\n', &arg.output_delimiter).as_bytes()
                 ).unwrap_or_else(|e| log_fatal(&e.to_string()));
             } else if !suppress_fail {
                 log_fatal(&result.error_msg())
