@@ -9,10 +9,9 @@ use std::sync::mpsc::SendError;
 use crossbeam::channel::{Sender, Receiver};
 use clap::{Parser, IntoApp};
 use ansi_term::Color::Red;
-use std::thread::JoinHandle;
 use std::process::{Command, Stdio};
-use std::process::ExitStatus;
 use std::thread;
+use output_stream::output_stream::{spawn, OutputStreamOption};
 
 static INPUT_DELIMITER_GROUP_NAME: &str = "INPUT_DELIMITER_GROUP";
 const BUF_SIZE: usize = 1024;
@@ -27,30 +26,7 @@ pub fn log_fatal(msg: &str) -> ! {
     std::process::exit(1);
 }
 
-pub struct SubProcessResult {
-    exit_code: ExitStatus,
-    input: Vec<u8>,
-    output: Vec<u8>,
-    cmd: Arc<Vec<String>>,
-}
-
-impl SubProcessResult {
-    fn error_msg(self) -> String {
-        [
-            "sub process exit code is not 0".to_string(),
-            "input:".to_string(),
-            format!("{}", String::from_utf8_lossy(&self.input)),
-            "".to_owned(),
-            "command:".to_string(),
-            format!("\t{}", self.cmd.join(" ")),
-            "".to_owned(),
-            "output:".to_string(),
-            format!("\t{}", String::from_utf8_lossy(&self.output))
-        ].join("\n")
-    }
-}
-
-type SubProcessHandle = JoinHandle<SubProcessResult>;
+use sub_process::sub_process::{SubProcessHandle, SubProcessResult};
 
 pub struct SubProcess {
     cmd: Arc<Vec<String>>,
@@ -232,24 +208,13 @@ fn main() {
 
     let cmd = [[arg.command].to_vec(), arg.arguments].concat();
     let (tx, rx):(Sender<SubProcessHandle>, Receiver<SubProcessHandle>) = crossbeam::channel::bounded(arg.number_of_parallel);
-    let suppress_fail = arg.suppress_fail;
 
-    let output_handle = thread::spawn(move|| {
-        let mut stdout = io::stdout();
-        for handle in rx {
-            let result = handle.join().unwrap_or_else(|_| log_fatal("failed to spawn sub process"));
-            if result.exit_code.success() {
-                stdout.write_all(
-                    // 末尾の改行を取り除いてからじゃないと
-                    // 末尾に余計な output_delimiter がついちゃう
-                    String::from_utf8_lossy(&result.output).trim_end().replace('\n', &arg.output_delimiter).as_bytes()
-                ).unwrap_or_else(|e| log_fatal(&e.to_string()));
-            } else if !suppress_fail {
-                log_fatal(&result.error_msg())
-            }
-            stdout.write_all("\n".as_bytes()).unwrap_or_else(|e| log_fatal(&e.to_string()));
-        }
-    });
+
+    let output_handle = spawn(rx, Arc::new(OutputStreamOption{
+        output_delimiter: arg.output_delimiter,
+        log_fatal,
+        suppress_fail: arg.suppress_fail,
+    }));
 
     match arg.regex {
         Some(r) => {
