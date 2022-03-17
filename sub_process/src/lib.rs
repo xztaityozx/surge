@@ -8,10 +8,10 @@ mod tests {
 }
 
 pub mod sub_process {
-    use std::{process::ExitStatus, thread::JoinHandle, sync::Arc};
+    use std::{sync::Arc, thread::JoinHandle};
 
     pub struct SubProcessResult {
-        pub exit_code: ExitStatus,
+        pub success: bool,
         pub input: Vec<u8>,
         pub output: Vec<u8>,
         pub cmd: Arc<Vec<String>>,
@@ -27,8 +27,9 @@ pub mod sub_process {
                 format!("\t{}", self.cmd.join(" ")),
                 "".to_owned(),
                 "output:".to_string(),
-                format!("\t{}", String::from_utf8_lossy(&self.output))
-            ].join("\n")
+                format!("\t{}", String::from_utf8_lossy(&self.output)),
+            ]
+            .join("\n")
         }
     }
 

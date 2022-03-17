@@ -1,17 +1,17 @@
 use crate::io::Write;
-use chrono::Local;
-use clap_complete::{Generator, generate};
-use env_logger::Builder;
-use regex::Regex;
-use std::sync::Arc;
-use std::{io, io::BufRead};
-use std::sync::mpsc::SendError;
-use crossbeam::channel::{Sender, Receiver};
-use clap::{Parser, IntoApp};
 use ansi_term::Color::Red;
-use std::process::{Command, Stdio};
-use std::thread;
+use chrono::Local;
+use clap::{IntoApp, Parser};
+use clap_complete::{generate, Generator};
+use crossbeam::channel::{Receiver, Sender};
+use env_logger::Builder;
 use output_stream::output_stream::{spawn, OutputStreamOption};
+use regex::Regex;
+use std::process::{Command, Stdio};
+use std::sync::mpsc::SendError;
+use std::sync::Arc;
+use std::thread;
+use std::{io, io::BufRead};
 
 static INPUT_DELIMITER_GROUP_NAME: &str = "INPUT_DELIMITER_GROUP";
 const BUF_SIZE: usize = 1024;
@@ -30,12 +30,12 @@ use sub_process::sub_process::{SubProcessHandle, SubProcessResult};
 
 pub struct SubProcess {
     cmd: Arc<Vec<String>>,
-    tx: Sender<SubProcessHandle>
+    tx: Sender<SubProcessHandle>,
 }
 
 impl SubProcess {
     fn spawn(self, input_buf: Vec<u8>) -> Result<(), SendError<SubProcessHandle>> {
-        let handle = thread::spawn(move ||{
+        let handle = thread::spawn(move || {
             let mut child = Command::new(&self.cmd[0])
                 .args(&self.cmd[1..])
                 .stdin(Stdio::piped())
@@ -43,10 +43,9 @@ impl SubProcess {
                 .stderr(Stdio::piped())
                 .spawn()
                 .unwrap_or_else(|e| {
-                    log_fatal(&[
-                        "failed to spawn sub process".to_owned(),
-                        (e.to_string())
-                    ].join(": "))
+                    log_fatal(
+                        &["failed to spawn sub process".to_owned(), (e.to_string())].join(": "),
+                    )
                 });
 
             let stdin = child
@@ -54,32 +53,40 @@ impl SubProcess {
                 .as_mut()
                 .unwrap_or_else(|| log_fatal("failed to open sub process stdin"));
 
-            stdin.write_all(&input_buf).unwrap_or_else(|e| log_fatal(&e.to_string()));
+            stdin
+                .write_all(&input_buf)
+                .unwrap_or_else(|e| log_fatal(&e.to_string()));
             stdin.flush().unwrap_or_else(|e| log_fatal(&e.to_string()));
 
-            let output = child
-                .wait_with_output()
-                .unwrap_or_else(|e| {
-                    log_fatal(&[
+            let output = child.wait_with_output().unwrap_or_else(|e| {
+                log_fatal(
+                    &[
                         "failed to wait sub process stdout".to_owned(),
-                        (e.to_string())
-                    ].join(": "))
-                });
+                        (e.to_string()),
+                    ]
+                    .join(": "),
+                )
+            });
 
-            let output_buf = if output.status.success()  { output.stdout }  else { output.stderr };
-            SubProcessResult { 
-                exit_code: output.status, 
+            let output_buf = if output.status.success() {
+                output.stdout
+            } else {
+                output.stderr
+            };
+            SubProcessResult {
+                success: output.status.success(),
                 input: input_buf.to_vec(),
-                output: output_buf, 
-                cmd: self.cmd 
+                output: output_buf,
+                cmd: self.cmd,
             }
         });
 
-        self.tx.send(handle).unwrap_or_else(|e| log_fatal(&e.to_string()));
+        self.tx
+            .send(handle)
+            .unwrap_or_else(|e| log_fatal(&e.to_string()));
         Ok(())
     }
 }
-
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -116,7 +123,11 @@ struct Arg {
 }
 
 // regex_process は行を正規表現で分割して cmd の stdin に流し込む
-fn regex_process(delm: &regex::Regex, cmd: Vec<String>, tx: &Sender<SubProcessHandle>) -> Result<(), SendError<SubProcessHandle>> {
+fn regex_process(
+    delm: &regex::Regex,
+    cmd: Vec<String>,
+    tx: &Sender<SubProcessHandle>,
+) -> Result<(), SendError<SubProcessHandle>> {
     let command_line = Arc::new(cmd);
 
     let stdin = io::stdin();
@@ -131,19 +142,19 @@ fn regex_process(delm: &regex::Regex, cmd: Vec<String>, tx: &Sender<SubProcessHa
 
                 let sub_process = SubProcess {
                     cmd: Arc::clone(&command_line),
-                    tx: tx.clone()
+                    tx: tx.clone(),
                 };
 
-                sub_process.spawn(
-                    delm.replace_all(&String::from_utf8_lossy(&buf), "\n")
-                        .to_string()
-                        .as_bytes()
-                        .to_vec()
-                ).unwrap_or_else(|e| log_fatal(&e.to_string()));
-            },
-            Err(e) => {
-                log_fatal(&e.to_string())
+                sub_process
+                    .spawn(
+                        delm.replace_all(&String::from_utf8_lossy(&buf), "\n")
+                            .to_string()
+                            .as_bytes()
+                            .to_vec(),
+                    )
+                    .unwrap_or_else(|e| log_fatal(&e.to_string()));
             }
+            Err(e) => log_fatal(&e.to_string()),
         }
     }
 
@@ -151,7 +162,11 @@ fn regex_process(delm: &regex::Regex, cmd: Vec<String>, tx: &Sender<SubProcessHa
 }
 
 // string_process は行を文字列で分割して cmd の stdin に流し込む
-fn string_process(delm: String, cmd: Vec<String>, tx: &Sender<SubProcessHandle>) -> Result<(), SendError<SubProcessHandle>> {
+fn string_process(
+    delm: String,
+    cmd: Vec<String>,
+    tx: &Sender<SubProcessHandle>,
+) -> Result<(), SendError<SubProcessHandle>> {
     let command_line = Arc::new(cmd);
     let stdin = io::stdin();
 
@@ -165,22 +180,16 @@ fn string_process(delm: String, cmd: Vec<String>, tx: &Sender<SubProcessHandle>)
 
                 let sub_process = SubProcess {
                     cmd: Arc::clone(&command_line),
-                    tx: tx.clone()
+                    tx: tx.clone(),
                 };
 
                 let line = String::from_utf8_lossy(&buf);
 
-                sub_process.spawn(
-                    line.replace(&delm, "\n")
-                        .to_string()
-                        .as_bytes()
-                        .to_vec()
-                )
+                sub_process
+                    .spawn(line.replace(&delm, "\n").to_string().as_bytes().to_vec())
                     .unwrap_or_else(|e| log_fatal(&e.to_string()));
-            },
-            Err(e) => {
-                log_fatal(&e.to_string())
             }
+            Err(e) => log_fatal(&e.to_string()),
         }
     }
 
@@ -201,30 +210,43 @@ fn main() {
 
     Builder::new()
         .format(|buf, record| -> Result<(), io::Error> {
-            writeln!(buf, "[{} {} {}] {}",Local::now().format("%F %T"),Red.paint(record.level().to_string()),APP_NAME,record.args())
+            writeln!(
+                buf,
+                "[{} {} {}] {}",
+                Local::now().format("%F %T"),
+                Red.paint(record.level().to_string()),
+                APP_NAME,
+                record.args()
+            )
         })
         .filter(None, log::LevelFilter::Info)
         .init();
 
     let cmd = [[arg.command].to_vec(), arg.arguments].concat();
-    let (tx, rx):(Sender<SubProcessHandle>, Receiver<SubProcessHandle>) = crossbeam::channel::bounded(arg.number_of_parallel);
+    let (tx, rx): (Sender<SubProcessHandle>, Receiver<SubProcessHandle>) =
+        crossbeam::channel::bounded(arg.number_of_parallel);
 
-
-    let output_handle = spawn(rx, Arc::new(OutputStreamOption{
-        output_delimiter: arg.output_delimiter,
-        log_fatal,
-        suppress_fail: arg.suppress_fail,
-    }));
+    let output_handle = spawn(
+        rx,
+        Arc::new(OutputStreamOption {
+            output_delimiter: arg.output_delimiter,
+            log_fatal,
+            suppress_fail: arg.suppress_fail,
+        }),
+    );
 
     match arg.regex {
         Some(r) => {
-            regex_process(&r,cmd,&tx).unwrap_or_else(|e| log_fatal(&e.to_string()));
-        },
+            regex_process(&r, cmd, &tx).unwrap_or_else(|e| log_fatal(&e.to_string()));
+        }
         None => {
-            string_process(arg.input_delimiter, cmd, &tx).unwrap_or_else(|e| log_fatal(&e.to_string()));
+            string_process(arg.input_delimiter, cmd, &tx)
+                .unwrap_or_else(|e| log_fatal(&e.to_string()));
         }
     }
     drop(tx);
 
-    output_handle.join().unwrap_or_else(|_| log_fatal("failed to spawn output thread"));
+    output_handle
+        .join()
+        .unwrap_or_else(|_| log_fatal("failed to spawn output thread"));
 }
