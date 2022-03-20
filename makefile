@@ -7,7 +7,7 @@ test-main:
 	cargo test
 
 test-output_stream:
-	cd output_stream && cargo test
+	cd output_stream;cargo test
 
 test-sub_process:
-	cd sub_process && cargo test
+	cd sub_process;cargo test
