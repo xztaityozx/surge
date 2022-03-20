@@ -94,13 +94,13 @@ pub mod output_stream {
 
                     // join with output_delimiter
                     if let Some(line) = lines.next() {
-                        writeln!(writer, "{}", &line)
+                        write!(writer, "{}", &line)
                             .unwrap_or_else(|e| (option.log_fatal)(&e.to_string()));
 
                         for line in lines {
-                            writeln!(writer, "{}", option.output_delimiter)
+                            write!(writer, "{}", option.output_delimiter)
                                 .unwrap_or_else(|e| (option.log_fatal)(&e.to_string()));
-                            writeln!(writer, "{}", &line)
+                            write!(writer, "{}", &line)
                                 .unwrap_or_else(|e| (option.log_fatal)(&e.to_string()));
                         }
                     } else {
@@ -108,9 +108,9 @@ pub mod output_stream {
                     }
                 } else if !option.suppress_fail {
                     (option.log_fatal)(&result.error_msg())
-                } else {
-                    writeln!(writer).unwrap_or_else(|e| (option.log_fatal)(&e.to_string()));
                 }
+
+                writeln!(writer).unwrap_or_else(|e| (option.log_fatal)(&e.to_string()));
             }
         })
     }
