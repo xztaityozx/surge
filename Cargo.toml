@@ -1,6 +1,6 @@
 [package]
 name = "surge"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/xztaityozx/surge"
@@ -21,3 +21,5 @@ clap = {version = "3.1.6", features = ["derive"]}
 chrono = "0.4"
 ansi_term = "0.12"
 clap_complete = "3.1.1"
+sub_process = {path = "./sub_process"}
+output_stream = {path = "./output_stream"}
