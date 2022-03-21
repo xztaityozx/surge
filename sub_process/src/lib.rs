@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, thread::{self, JoinHandle}, process::{Command, Stdio}};
+    use std::{
+        process::{Command, Stdio},
+        sync::Arc,
+        thread::{self, JoinHandle},
+    };
 
-    use crossbeam::channel::{Sender, Receiver};
+    use crossbeam::channel::{Receiver, Sender};
 
-    use crate::sub_process::{SubProcessResult, SubProcess};
+    use crate::sub_process::{SubProcess, SubProcessResult};
 
     #[test]
     fn it_sub_process_result_error_msg() {
@@ -22,25 +26,29 @@ mod tests {
             "".to_owned(),
             "output:".to_string(),
             format!("\t{}", String::from_utf8_lossy(output)),
-        ].join("\n");
+        ]
+        .join("\n");
 
-        let sub_process_result = SubProcessResult{
+        let sub_process_result = SubProcessResult {
             cmd: Arc::new(cmd.to_vec()),
             input: input.to_vec(),
             output: output.to_vec(),
-            success: true
+            success: true,
         };
 
         assert_eq!(expected, sub_process_result.error_msg())
     }
-    
+
     #[test]
     fn it_sub_process_spawn_ng() {
         let cmd = Arc::new(["cargo", "--typo"].map(|s| s.to_string()).to_vec());
-        let (tx, rx): (Sender<JoinHandle<SubProcessResult>>, Receiver<JoinHandle<SubProcessResult>>) = crossbeam::channel::bounded(3);
+        let (tx, rx): (
+            Sender<JoinHandle<SubProcessResult>>,
+            Receiver<JoinHandle<SubProcessResult>>,
+        ) = crossbeam::channel::bounded(3);
         let number_of_sub_process = 10;
 
-        let receiver = thread::spawn(move|| {
+        let receiver = thread::spawn(move || {
             for h in rx {
                 let r = h.join().unwrap();
                 assert!(!r.success);
@@ -48,10 +56,10 @@ mod tests {
         });
 
         for _ in 1..number_of_sub_process {
-            let sp = SubProcess{
+            let sp = SubProcess {
                 cmd: Arc::clone(&cmd),
                 tx: tx.clone(),
-                log_fatal: |_s| {std::process::exit(1)}
+                log_fatal: |_s| std::process::exit(1),
             };
 
             sp.spawn("".as_bytes().to_vec()).unwrap();
@@ -65,12 +73,25 @@ mod tests {
     #[test]
     fn it_sub_process_spawn_ok() {
         let cmd = Arc::new(["cargo", "--help"].map(|s| s.to_string()).to_vec());
-        let (tx, rx): (Sender<JoinHandle<SubProcessResult>>, Receiver<JoinHandle<SubProcessResult>>) = crossbeam::channel::bounded(3);
+        let (tx, rx): (
+            Sender<JoinHandle<SubProcessResult>>,
+            Receiver<JoinHandle<SubProcessResult>>,
+        ) = crossbeam::channel::bounded(3);
         let number_of_sub_process = 10;
 
-        let expected = String::from_utf8_lossy(&Command::new("cargo").arg("--help").stdout(Stdio::piped()).spawn().unwrap().wait_with_output().unwrap().stdout).to_string();
+        let expected = String::from_utf8_lossy(
+            &Command::new("cargo")
+                .arg("--help")
+                .stdout(Stdio::piped())
+                .spawn()
+                .unwrap()
+                .wait_with_output()
+                .unwrap()
+                .stdout,
+        )
+        .to_string();
 
-        let receiver = thread::spawn(move|| {
+        let receiver = thread::spawn(move || {
             for h in rx {
                 let r = h.join().unwrap();
                 assert!(r.success);
@@ -80,10 +101,10 @@ mod tests {
         });
 
         for _ in 1..number_of_sub_process {
-            let sp = SubProcess{
+            let sp = SubProcess {
                 cmd: Arc::clone(&cmd),
                 tx: tx.clone(),
-                log_fatal: |_s| {std::process::exit(1)}
+                log_fatal: |_s| std::process::exit(1),
             };
 
             sp.spawn("".as_bytes().to_vec()).unwrap();
@@ -96,7 +117,12 @@ mod tests {
 }
 
 pub mod sub_process {
-    use std::{sync::{Arc, mpsc::SendError}, thread::{JoinHandle, self}, process::{Command, Stdio}, io::Write};
+    use std::{
+        io::Write,
+        process::{Command, Stdio},
+        sync::{mpsc::SendError, Arc},
+        thread::{self, JoinHandle},
+    };
 
     use crossbeam::channel::Sender;
 
@@ -124,7 +150,7 @@ pub mod sub_process {
                 "output:".to_string(),
                 format!("\t{}", String::from_utf8_lossy(&self.output)),
             ]
-                .join("\n")
+            .join("\n")
         }
     }
 
@@ -136,12 +162,12 @@ pub mod sub_process {
         /// sub process handle channel
         pub tx: Sender<SubProcessHandle>,
         /// log and exit closure on failed create spawn thread
-        pub log_fatal: fn(s: &str) -> !
+        pub log_fatal: fn(s: &str) -> !,
     }
 
     impl SubProcess {
         /// spawn sub process for each input line
-        /// 
+        ///
         pub fn spawn(self, input_buf: Vec<u8>) -> Result<(), SendError<SubProcessHandle>> {
             let handle = thread::spawn(move || {
                 let mut child = Command::new(&self.cmd[0])
@@ -164,7 +190,9 @@ pub mod sub_process {
                 stdin
                     .write_all(&input_buf)
                     .unwrap_or_else(|e| (self.log_fatal)(&e.to_string()));
-                stdin.flush().unwrap_or_else(|e| (self.log_fatal)(&e.to_string()));
+                stdin
+                    .flush()
+                    .unwrap_or_else(|e| (self.log_fatal)(&e.to_string()));
 
                 let output = child.wait_with_output().unwrap_or_else(|e| {
                     (self.log_fatal)(
@@ -172,7 +200,7 @@ pub mod sub_process {
                             "failed to wait sub process stdout".to_owned(),
                             (e.to_string()),
                         ]
-                            .join(": "),
+                        .join(": "),
                     )
                 });
 
