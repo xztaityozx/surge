@@ -85,6 +85,10 @@ $ cd surge
 $ cargo install --path .
 ```
 
+# LICENSE
+
+[MIT LICENSE](./LICENSE)
+
 # TODO
 - [ ] write unit test
 - [x] generate shell completion script
