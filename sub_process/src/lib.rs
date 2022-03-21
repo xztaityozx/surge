@@ -101,12 +101,17 @@ pub mod sub_process {
     use crossbeam::channel::Sender;
 
     pub struct SubProcessResult {
+        /// status of sub process
         pub success: bool,
+        /// input **line**
         pub input: Vec<u8>,
+        /// output
         pub output: Vec<u8>,
+        /// command line
         pub cmd: Arc<Vec<String>>,
     }
     impl SubProcessResult {
+        /// make error message
         pub fn error_msg(self) -> String {
             [
                 "sub process exit code is not 0".to_string(),
