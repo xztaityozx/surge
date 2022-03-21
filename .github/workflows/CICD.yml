@@ -20,7 +20,7 @@ jobs:
             components: clippy
             override: true
       - name: rust-clippy-check
-      - uses: actions-rs/clippy-check@v1.0.7
+        uses: actions-rs/clippy-check@v1.0.7
         with:
           tokne: ${{secrets.GITHUB_TOKEN}}
           args: --locked --all-targets --all-features --workspace
