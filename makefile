@@ -1,3 +1,4 @@
+SHELL=bash
 build:
 	cargo build
 
@@ -11,3 +12,7 @@ test-output_stream:
 
 test-sub_process:
 	cd sub_process;cargo test
+
+strip:
+	@./scripts/strip.sh $(TARGET)
+
