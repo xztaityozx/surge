@@ -16,3 +16,8 @@ test-sub_process:
 strip:
 	@./scripts/strip.sh $(TARGET)
 
+build-release:
+	@cargo build --release --target $(TARGET) --locked
+
+archive: build-release
+	@./scripts/archive.sh $(TARGET) $(VERSION) $(BIN_PATH)
