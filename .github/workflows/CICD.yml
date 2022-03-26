@@ -105,14 +105,12 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
-        shell: bash
         with:
           name: surge-v${steps.vars.outputs.VERSION}-${{matrix.job.target}}
           path: ${{steps.archive.outputs.ARCHIVE_NAME}}
 
       - name: Publish Release
         uses: softprops/action-gh-release@v1
-        shell: bash
         with:
           files: |
             ${{steps.archive.outputs.ARCHIVE_NAME}}
