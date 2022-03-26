@@ -87,10 +87,11 @@ $ cargo install --path .
 
 # LICENSE
 
-[MIT LICENSE](./LICENSE)
+- [MIT LICENSE](./LICENSE)
+- [APACHE LICENSE](./LICENSE-APACHE)
 
 # TODO
-- [ ] write unit test
+- [x] write unit test
 - [x] generate shell completion script
-- [ ] create release
+- [x] create release
 
