@@ -38,8 +38,8 @@ EOF
 
 cd "${REPOSITORY_ROOT}/archive"
 case "$TARGET" in
-  windows) 7z -y a "$ARCHIVE_NAME" "${ARCHIVE_DIR}" | tail -2;;
-  *) tar czf "$ARCHIVE_NAME" "${ARCHIVE_DIR}";;
+  windows) 7z -y a "$ARCHIVE_NAME" "${BASE}"/* | tail -2;;
+  *) tar czf "$ARCHIVE_NAME" "${BASE}"/*;;
 esac
 
 echo "${PWD}/${ARCHIVE_NAME}"
