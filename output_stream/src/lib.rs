@@ -7,42 +7,50 @@ mod tests {
     #[test]
     fn it_spawn_ok_on_success() {
         let (tx, rx) = crossbeam::channel::bounded(10);
-        let handle = spawn(rx, Arc::new(OutputStreamOption{
-            output_delimiter: " ".to_string(),
-            suppress_fail: false,
-            log_fatal
-        }));
+        let handle = spawn(
+            rx,
+            Arc::new(OutputStreamOption {
+                output_delimiter: " ".to_string(),
+                suppress_fail: false,
+                log_fatal,
+            }),
+        );
 
         tx.send(thread::spawn(|| {
             sub_process::sub_process::SubProcessResult {
                 success: true,
                 input: "input string".as_bytes().to_vec(),
                 output: "output string".as_bytes().to_vec(),
-                cmd: Arc::new(Vec::new())
+                cmd: Arc::new(Vec::new()),
             }
-        })).unwrap();
+        }))
+        .unwrap();
 
         drop(tx);
         assert!(handle.join().is_ok());
     }
-    
+
     #[test]
     fn it_spawn_ok_on_failed() {
         let (tx, rx) = crossbeam::channel::bounded(10);
-        let handle = spawn(rx, Arc::new(OutputStreamOption{
-            output_delimiter: " ".to_string(),
-            suppress_fail: true,
-            log_fatal
-        }));
+        let handle = spawn(
+            rx,
+            Arc::new(OutputStreamOption {
+                output_delimiter: " ".to_string(),
+                suppress_fail: true,
+                log_fatal,
+            }),
+        );
 
         tx.send(thread::spawn(|| {
             sub_process::sub_process::SubProcessResult {
                 success: false,
                 input: "input string".as_bytes().to_vec(),
                 output: "output string".as_bytes().to_vec(),
-                cmd: Arc::new(Vec::new())
+                cmd: Arc::new(Vec::new()),
             }
-        })).unwrap();
+        }))
+        .unwrap();
 
         drop(tx);
         assert!(handle.join().is_ok());
