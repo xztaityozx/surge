@@ -85,6 +85,10 @@ $ cd surge
 $ cargo install --path .
 ```
 
+## Download pre-build binary
+
+Download archive from [releases](https://github.com/xztaityozx/surge/releases)
+
 # LICENSE
 
 - [MIT LICENSE](./LICENSE)
