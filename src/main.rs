@@ -1,6 +1,5 @@
 use crate::io::Write;
 use ansi_term::Color::Red;
-use chrono::Local;
 use clap::{IntoApp, Parser};
 use clap_complete::{generate, Generator};
 use crossbeam::channel::{Receiver, Sender};
@@ -151,8 +150,7 @@ fn main() {
         .format(|buf, record| -> Result<(), io::Error> {
             writeln!(
                 buf,
-                "[{} {} {}] {}",
-                Local::now().format("%F %T"),
+                "[{} {}] {}",
                 Red.paint(record.level().to_string()),
                 APP_NAME,
                 record.args()

@@ -1,6 +1,6 @@
 [package]
 name = "surge"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/xztaityozx/surge"
@@ -18,7 +18,6 @@ crossbeam = "0.8"
 log = "0.4"
 env_logger = "0.9.0"
 clap = {version = "3.1.6", features = ["derive"]}
-chrono = "0.4"
 ansi_term = "0.12"
 clap_complete = "3.1.1"
 sub_process = {path = "./sub_process"}
