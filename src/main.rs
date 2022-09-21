@@ -1,5 +1,5 @@
 use crate::io::Write;
-use ansi_term::Color::Red;
+use anstyle;
 use clap::{IntoApp, Parser};
 use clap_complete::{generate, Generator};
 use crossbeam::channel::{Receiver, Sender};
@@ -150,8 +150,12 @@ fn main() {
         .format(|buf, record| -> Result<(), io::Error> {
             writeln!(
                 buf,
-                "[{} {}] {}",
-                Red.paint(record.level().to_string()),
+                "[{}{}{} {}] {}",
+                anstyle::Style::new()
+                    .fg_color(Some(anstyle::AnsiColor::Red.into()))
+                    .render(),
+                record.level().as_str(),
+                anstyle::Reset::render(anstyle::Reset),
                 APP_NAME,
                 record.args()
             )
