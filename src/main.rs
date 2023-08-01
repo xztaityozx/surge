@@ -1,7 +1,7 @@
 use crate::io::Write;
 use anstyle;
-use clap::{IntoApp, Parser};
-use clap_complete::{generate, Generator};
+use clap::{CommandFactory, Parser};
+use clap_complete::generate;
 use crossbeam::channel::{Receiver, Sender};
 use env_logger::Builder;
 use output_stream::output_stream::{spawn, OutputStreamOption};
@@ -25,8 +25,8 @@ pub fn log_fatal(msg: &str) -> ! {
 }
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
-struct Arg {
+#[command(author, version, about, long_about = None)]
+struct Args {
     /// command
     command: String,
 
@@ -134,15 +134,11 @@ fn string_process(
     Ok(())
 }
 
-fn print_completions<G: Generator>(gen: G) {
-    generate(gen, &mut Arg::command(), APP_NAME, &mut io::stdout());
-}
-
 fn main() {
-    let arg = Arg::parse();
+    let arg = Args::parse();
 
     if let Some(shell) = arg.completion {
-        print_completions(shell);
+        generate(shell, &mut Args::command(), APP_NAME, &mut io::stdout());
         std::process::exit(0);
     }
 
