@@ -310,14 +310,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
-name = "output_stream"
-version = "0.1.0"
-dependencies = [
- "crossbeam",
- "sub_process",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -390,13 +382,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
-name = "sub_process"
-version = "0.1.0"
-dependencies = [
- "crossbeam",
-]
-
-[[package]]
 name = "surge"
 version = "0.1.5"
 dependencies = [
@@ -406,9 +391,7 @@ dependencies = [
  "crossbeam",
  "env_logger",
  "log",
- "output_stream",
  "regex",
- "sub_process",
 ]
 
 [[package]]
