@@ -4,16 +4,19 @@ use clap::{CommandFactory, Parser};
 use clap_complete::generate;
 use crossbeam::channel::{Receiver, Sender};
 use env_logger::Builder;
-use output_stream::output_stream::{spawn, OutputStreamOption};
 use regex::Regex;
 use std::sync::mpsc::SendError;
 use std::sync::Arc;
 use std::{io, io::BufRead};
-use sub_process::sub_process::{SubProcess, SubProcessHandle};
+mod output;
+use crate::output::stream::{spawn, OutputStreamOption};
+mod sub_process;
+use crate::sub_process::sub_process::{SubProcess, SubProcessHandle};
 
 static INPUT_DELIMITER_GROUP_NAME: &str = "INPUT_DELIMITER_GROUP";
 const BUF_SIZE: usize = 1024;
 static APP_NAME: &str = env!("CARGO_PKG_NAME");
+
 
 #[macro_use]
 extern crate log;
