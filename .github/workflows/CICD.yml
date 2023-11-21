@@ -73,7 +73,7 @@ jobs:
         shell: bash
         id: vars
         run: |
-          echo ::set-output name=VERSION::$(cat Cargo.toml | sed -En '/^version/s/.+([0-9]+\.[0-9]+\.[0-9]+).+/\1/p')
+          echo name=VERSION::$(cat Cargo.toml | sed -En '/^version/s/.+([0-9]+\.[0-9]+\.[0-9]+).+/\1/p') >> $GITHUB_OUTPUT
 
       - name: Check version
         shell: bash
