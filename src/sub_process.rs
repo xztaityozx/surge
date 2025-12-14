@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn it_sub_process_spawn_ok() {
-        let cmd = Arc::new(["cargo", "--help"].map(|s| s.to_string()).to_vec());
+        let cmd = Arc::new(["cargo", "--version"].map(|s| s.to_string()).to_vec());
         let (tx, rx): (
             Sender<JoinHandle<SubProcessResult>>,
             Receiver<JoinHandle<SubProcessResult>>,
@@ -80,7 +80,7 @@ mod tests {
 
         let expected = String::from_utf8_lossy(
             &Command::new("cargo")
-                .arg("--help")
+                .arg("--version")
                 .stdout(Stdio::piped())
                 .spawn()
                 .unwrap()

@@ -1,7 +1,7 @@
 [package]
 name = "surge"
 version = "0.1.7"
-edition = "2021"
+edition = "2024"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/xztaityozx/surge"
 homepage = "https://github.com/xztaityozx/surge"
